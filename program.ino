@@ -1,3 +1,10 @@
+/*
+Calculating elapsed time
+ lblachnicki@gmail.com
+ */
+
+#include <Servo.h>
+
 int delayTime = 900;
 int digit1 = 2;
 int digit2 = 3;
@@ -14,12 +21,14 @@ int segF = 12;
 int segG = 8;
 
 int buttonPin = 14; //it's A0 but we are using it as a digital input, 13+1
-int powerPin = 15; //it's A1 but we are using it as a digital input, 14+1
+
+int servoPin = 13;
+Servo Servo1;
 
 unsigned long StartTime;
 
-int buttonState = 0; //current state of the button
-int lastButtonState = 0; //last state
+int buttonState = 1; //current state of the button
+int lastButtonState = 1; //last state
 int buttonCounter = 0; //push counter
 unsigned long ElapsedTime;
 
@@ -37,44 +46,85 @@ void setup()
   pinMode(segF, OUTPUT);
   pinMode(segG, OUTPUT);
   delay(1000);
-  StartTime = millis();
+  //StartTime = millis();
   Serial.begin(9600);
   Serial.println("Start");
-  pinMode(powerPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
-  ElapsedTime = millis() - StartTime;
+  pinMode(buttonPin, INPUT_PULLUP);
+  ElapsedTime = 0;
+  Servo1.attach(servoPin);
+}
+
+bool closingServo = true;
+void CloseServo()
+{
+  if(closingServo)
+  {
+    Servo1.write(40);
+    Serial.println("BZZZT CLOSING SERVO");
+  }
+
+  closingServo = false;
+}
+
+bool openingServo = true;
+void OpenServo()
+{
+  if(openingServo)
+  {
+    Serandvo1.write(120);
+    Serial.println("BZZZT OPENING SERVO");
+  }
+
+  openingServo = false;
 }
 
 void loop()
 {
-  digitalWrite(powerPin, HIGH);
-  if(buttonCounter != 1)
+  /*
+The device has two states:
+   A - closing servo, getting ready for counting time. Waiting for button | The result of buttonCounter % 2 is 0.
+   B - opening servo, counting time until hitting the button second time. Displaying the last time it counted. | The result of buttonCounter % 2 is 1.
+   That's why we want to calculate buttonCounter % 2 - in order to get the actual state.
+   */
+  buttonState = digitalRead(buttonPin);
+
+  if(buttonCounter % 2 == 0) //waiting for start button
   {
+    CloseServo();
+    StartTime = millis();
+  }
+
+  if(buttonCounter % 2 == 1) //waiting for hitting the button
+  {
+    OpenServo();
     ElapsedTime = millis() - StartTime;
   }
+
   DisplayNumber(ElapsedTime);
-  
-  buttonState = digitalRead(buttonPin);
-  if(buttonState != lastButtonState)
+
+  if(buttonState == LOW && buttonState != lastButtonState)
   {
-    if(buttonState == HIGH)
-     {
-       buttonCounter++;
-       lastButtonState = buttonState;
-       //Serial.println(buttonCounter);
-       delay(50);
-     } 
-     
+    buttonCounter++;
+    String One = "buttonCounter = ";
+    String Two = One + buttonCounter;
+    Serial.println(Two);
+    delay(50);
   }
+  lastButtonState = buttonState;
   Serial.println(buttonState);
+
+  if(ElapsedTime > 9999) //prevent ugly overflows
+  {
+    StartTime = millis();
+  }
 }
 
 void DisplayNumber(int n)
 {
   int dividers[4] = {
-    1000, 100, 10, 1      };
+    1000, 100, 10, 1        };
   int results[4] = {
-    0, 0, 0, 0      };
+    0, 0, 0, 0        };
   for(int i = 0; i < 4; i++) //there are 4 digits
   {
     results[i] = n / dividers[i];
@@ -199,6 +249,7 @@ void sendDigit(int x)
     break;
   }
 }
+
 
 
 
